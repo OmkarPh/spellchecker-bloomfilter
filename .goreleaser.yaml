@@ -1,0 +1,38 @@
+project_name: spellchecker-bloomfilter
+before:
+  hooks:
+    - go mod tidy
+builds:
+  - env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+checksum:
+  name_template: 'checksums.txt'
+snapshot:
+  name_template: "{{ incpatch .Version }}-next"
+brews:
+  - tap:
+      owner: OmkarPh
+      name: homebrew-tap
+    name: spellchecker-bloomfilter
+    homepage: "https://github.com/OmkarPh/spellchecker-bloomfilter"
+    description: "A Bloomfilter powered Spell checker implemented in golang"
+    folder: Formula
+    install: |
+      bin.install "spellchecker-bloomfilter"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+
+
+# Ref. https://flowerinthenight.com/blog/2023/04/13/homebrew-golang-p2
