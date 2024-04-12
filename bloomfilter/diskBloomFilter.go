@@ -9,9 +9,9 @@ import (
 	"hash"
 	"math/rand"
 	"os"
-	"path"
 	"strings"
 
+	"github.com/fatih/color"
 	"github.com/spaolacci/murmur3"
 )
 
@@ -49,7 +49,10 @@ func BuildOpbfFile(opbfFilePath string, hashFnCount uint16, bfSize uint32, caseS
 	}
 
 	file, err := os.Create(opbfFilePath)
-	if errors.Is(err, os.ErrPermission) {
+	if err != nil {
+		if errors.Is(err, os.ErrPermission) {
+			color.Red(fmt.Sprintf("Permission denied to create file at %s\n", opbfFilePath))
+		}
 		return config, err
 	}
 	defer file.Close()
@@ -152,23 +155,6 @@ func ParseOpbfFile(opbfFilePath string) (bool, DiskBloomFilterConfig) {
 	return true, config
 }
 
-// Returns config, isAlreadyLoaded
-func EnsureOpbfFile(fileName string, hashFnCount uint16, size uint32, caseSensitive bool) (DiskBloomFilterConfig, bool) {
-	filePath := path.Join(fileName)
-
-	valid, config := ParseOpbfFile(filePath)
-	if valid {
-		fmt.Printf("Using pre-seeded bloomfilter at %s of size %d with %d hash functions\n", filePath, config.bloomFilterSize, config.hashFnCount)
-		return config, true
-	}
-
-	// fmt.Printf("%s not found, building one ...\n", filePath)
-	config, _ = BuildOpbfFile(filePath, hashFnCount, size, caseSensitive)
-	fmt.Printf("Initialised bloomfilter at %s\n", filePath)
-
-	return config, false
-}
-
 func (bf *DiskBloomFilter) LoadDictionary(dictFilePath string) error {
 	dictionaryFile, err := os.Open(dictFilePath)
 	if err != nil {
@@ -186,16 +172,31 @@ func (bf *DiskBloomFilter) LoadDictionary(dictFilePath string) error {
 	return nil
 }
 
-func InitDiskBloomFilter(opbfFilePath string, dictionaryFilePath string, hashFnCount uint16, size uint32, caseSensitive bool) *DiskBloomFilter {
-	config, isAlreadyLoaded := EnsureOpbfFile(opbfFilePath, hashFnCount, size, caseSensitive)
+func InitDiskBloomFilter(opbfFilePath string, dictionaryFilePath string, hashFnCount uint16, size uint32, caseSensitive bool, forceReseed bool) *DiskBloomFilter {
+	validOpbfFile, newConfig := ParseOpbfFile(opbfFilePath)
+	var seedDictionary bool
+
+	if validOpbfFile && !forceReseed {
+		fmt.Printf("Using pre-seeded bloomfilter at %s\n", opbfFilePath)
+		seedDictionary = false
+	} else {
+		var err error
+		newConfig, err = BuildOpbfFile(opbfFilePath, hashFnCount, size, caseSensitive)
+		if err != nil {
+			color.Red(fmt.Sprintf("couldn't create bloom filter file at %s\n", opbfFilePath))
+			os.Exit(127)
+		}
+		fmt.Printf("Initialised new bloomfilter at %s\n", opbfFilePath)
+		seedDictionary = true
+	}
 
 	file, _ := os.OpenFile(opbfFilePath, os.O_RDWR, 0644)
 
 	bf := DiskBloomFilter{
 		opbfFilePath:          opbfFilePath,
 		dictionaryFilePath:    dictionaryFilePath,
-		DiskBloomFilterConfig: config,
-		hashFns:               make([]hash.Hash32, config.hashFnCount),
+		DiskBloomFilterConfig: newConfig,
+		hashFns:               make([]hash.Hash32, newConfig.hashFnCount),
 		file:                  file,
 	}
 
@@ -203,9 +204,13 @@ func InitDiskBloomFilter(opbfFilePath string, dictionaryFilePath string, hashFnC
 		bf.hashFns[i] = murmur3.New32WithSeed(bf.hashFnSeeds[i])
 	}
 
-	if !isAlreadyLoaded {
-		fmt.Println("Feeding words into bloom filter ...")
-		bf.LoadDictionary(dictionaryFilePath)
+	if seedDictionary {
+		fmt.Printf("Feeding words from %s into bloom filter ...\n", dictionaryFilePath)
+		err := bf.LoadDictionary(dictionaryFilePath)
+		if err != nil {
+			color.Red(fmt.Sprintf("couldn't find dictionary file at %s\n", dictionaryFilePath))
+			os.Exit(127)
+		}
 	}
 
 	fmt.Printf("Initialised disk bloom filter of size %d with %d hash functions\n", bf.bloomFilterSize, bf.hashFnCount)

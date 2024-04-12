@@ -33,26 +33,22 @@ cd spellchecker-bloomfilter
 - Case sensitivity options
 
 
-<!-- ## Supported commands
+## Usage
 
-Detailed documentation - https://redis.io/commands/
+- Check words `go run . coding challeges are fun to buidl`
+- Seed your own dictionary
+  
+  `go run . -dict ~/projects/spellchecker-bloomfilter/dict.txt`
 
-| Command  | Syntax                                   | Example                                                   | Description                                     |
-|----------|------------------------------------------|-----------------------------------------------------------|-------------------------------------------------|
-| SET      | **SET key value** [NX / XX] [GET]<br/>[EX seconds / PX milliseconds<br/> / EXAT unix-time-seconds / PXAT unix-time-milliseconds / KEEPTTL]                        | redis-cli SET name omkar<br/>redis-cli SET name omkar GET KEEPTTL              | Set the string value of a key                   |
-| GET      | **GET key**                                  | redis-cli GET name                                        | Get the value of a key                          |
-| DEL      | **DEL key** [key ...]                        | redis-cli DEL name<br/>redis-cli DEL name age             | Delete one or more keys                         |
-| INCR     | **INCR key**                                 | redis-cli INCR age                                        | Increment the integer value of a key            |
-| DECR     | **DECR key**                                 | redis-cli DECR age                                        | Decrement the integer value of a key            |
-| EXISTS   | **EXISTS key** [key ...]                     | redis-cli EXISTS name<br/>redis-cli EXISTS name age       | Check if a key exists                           |
-| EXPIRE   | **EXPIRE key seconds** [NX / XX / GT / LT]   | redis-cli EXPIRE name 20<br/>redis-cli EXPIRE name 20 NX  | Set a key's time to live in seconds             |
-| PERSIST  | **PERSIST key **                             | redis-cli PERSIST name                                    | Remove the expiration from a key                |
-| TTL      | **TTL key**                                  | redis-cli TTL key                                         | Get the time to live for a key (in seconds)     |
-| TYPE     | **TYPE key**                                 | redis-cli TYPE name                                       | Determine the type stored at a key              |
-| PING     | **PING**                                     | redis-cli PING                                            | Ping the server                                 |
-| ECHO     | **ECHO message**                           | redis-cli ECHO "Hello world"                              | Echo the given string                           | -->
+- Rebuild bloom filter `-build`
+  - Customise number of hash functions & size of bloom filter.
+     Note - Size refers to number of bits used on disk for filter.
+    
+    `go run . -build -hashes 3 -size 5200000`
 
+  - With own dictionary
 
+    `go run . -build -dict data/dict.txt -hashes 3 -size 5200000` (With custom dictionary)
 
 
 ## Local setup
@@ -69,9 +65,9 @@ go get .
 go run .
 
 # Build release executible
-go build -o build/spellchecker-bloomfilter -v
+go build -o build/spellchecker-bloomfilter
 
-./build/spellchecker-bloomfilter
+./build/spellchecker-bloomfilter coding challeges are fun to buidl
 ```
 
 ## Output
